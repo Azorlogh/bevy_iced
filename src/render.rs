@@ -1,5 +1,7 @@
 use bevy_derive::{Deref, DerefMut};
 use bevy_ecs::prelude::Query;
+#[cfg(target_arch = "wasm32")]
+use bevy_ecs::system::NonSend;
 use bevy_ecs::{
     system::{Commands, Res, Resource},
     world::World,
@@ -7,15 +9,17 @@ use bevy_ecs::{
 use bevy_render::render_graph::RenderLabel;
 use bevy_render::renderer::{RenderDevice, RenderQueue};
 use bevy_render::{
+    Extract,
     render_graph::{Node, NodeRunError, RenderGraphContext},
     renderer::RenderContext,
     view::ExtractedWindows,
-    Extract,
 };
 use bevy_window::Window;
 use iced_core::Size;
 use iced_wgpu::wgpu::TextureFormat;
 use iced_widget::graphics::Viewport;
+
+use cfg_if::cfg_if;
 
 use crate::{DidDraw, IcedProps, IcedResource, IcedSettings};
 
@@ -58,8 +62,11 @@ pub fn extract_iced_data(
     ));
 }
 
-pub fn recall_staging_belt(iced: Res<IcedResource>) {
-    iced.lock().unwrap().engine.end_frame();
+pub fn recall_staging_belt(
+    #[cfg(target_arch = "wasm32")] iced: NonSend<IcedResource>,
+    #[cfg(not(target_arch = "wasm32"))] iced: Res<IcedResource>,
+) {
+    iced.lock().engine.end_frame();
 }
 
 pub struct IcedNode;
@@ -81,12 +88,23 @@ impl Node for IcedNode {
             return Ok(());
         };
 
-        let IcedProps {
-            renderer,
-            debug,
-            engine,
-            ..
-        } = &mut *world.resource::<IcedResource>().lock().unwrap();
+        cfg_if! {
+            if #[cfg(target_arch = "wasm32")] {
+                let IcedProps {
+                    renderer,
+                    debug,
+                    engine,
+                    ..
+                } = &mut *world.non_send_resource::<IcedResource>().lock();
+            } else {
+                let IcedProps {
+                    renderer,
+                    debug,
+                    engine,
+                    ..
+                } = &mut *world.resource::<IcedResource>().lock();
+            }
+        };
         let render_device = world.resource::<RenderDevice>().wgpu_device();
         let render_queue = world.resource::<RenderQueue>();
         let viewport = world.resource::<ViewportResource>();

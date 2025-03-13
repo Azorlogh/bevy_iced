@@ -4,12 +4,14 @@ use bevy::{
     prelude::*,
 };
 use bevy_iced::iced::{
-    self,
-    widget::{slider, text, text_input, Button, Column, Row},
-    Alignment, Style,
+    self, Alignment, Style,
+    widget::{Button, Column, Row, slider, text, text_input},
 };
 use bevy_iced::{IcedContext, IcedPlugin, IcedSettings};
 use rand::random as rng;
+
+const NOTOSANS_REGULAR: iced::Font = iced::Font::with_name("Noto Sans");
+const NOTOSANS_REGULAR_BYTES: &[u8] = include_bytes!("../assets/fonts/NotoSans-Regular.ttf");
 
 #[derive(Clone, Event)]
 enum UiMessage {
@@ -37,7 +39,13 @@ pub fn main() {
             ..Default::default()
         }))
         .add_plugins((
-            IcedPlugin::default(),
+            IcedPlugin {
+                fonts: vec![NOTOSANS_REGULAR_BYTES],
+                settings: iced::Settings {
+                    default_font: NOTOSANS_REGULAR,
+                    ..Default::default()
+                },
+            },
             FrameTimeDiagnosticsPlugin,
             LogDiagnosticsPlugin::default(),
         ))
@@ -63,7 +71,7 @@ pub fn main() {
 }
 
 fn build_program(mut commands: Commands) {
-    commands.spawn(Camera2d::default());
+    commands.spawn(Camera2d);
 }
 
 fn tick(mut sprites: Query<&mut Sprite>, time: Res<Time>, data: Res<UiData>) {
@@ -98,7 +106,7 @@ fn box_system(
             UiMessage::Text(s) => {
                 data.text.clone_from(s);
                 for mut i in &mut sprites.iter_mut() {
-                    i.color = Color::rgba_u8(rng(), rng(), rng(), rng());
+                    i.color = Color::srgba_u8(rng(), rng(), rng(), rng());
                 }
             }
         }

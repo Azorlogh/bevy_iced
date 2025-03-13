@@ -7,12 +7,12 @@ use bevy_ecs::{
 use bevy_input::keyboard::KeyCode;
 use bevy_input::touch::TouchInput;
 use bevy_input::{
+    ButtonInput, ButtonState,
     keyboard::KeyboardInput,
     mouse::{MouseButtonInput, MouseWheel},
-    ButtonInput, ButtonState,
 };
 use bevy_window::{CursorEntered, CursorLeft, CursorMoved};
-use iced_core::{keyboard, mouse, Event as IcedEvent, Point};
+use iced_core::{Event as IcedEvent, Point, keyboard, mouse};
 
 #[derive(Resource, Deref, DerefMut, Default)]
 pub struct IcedEventQueue(Vec<iced_core::Event>);

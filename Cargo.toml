@@ -1,7 +1,7 @@
 [package]
 name = "bevy_iced"
 version = "0.5.0"
-edition = "2021"
+edition = "2024"
 description = "Iced integration for Bevy"
 authors = ["tasgon <me@tas.sh>"]
 license = "MIT OR Apache-2.0"
@@ -21,11 +21,15 @@ bevy_utils = "0.15"
 bevy_window = "0.15"
 
 iced_core = { git = "https://github.com/Azorlogh/iced", rev = "47af5890d8cf80b8bfd5909eee1ef3b1d5c05421" }
+iced_graphics = { git = "https://github.com/Azorlogh/iced", rev = "47af5890d8cf80b8bfd5909eee1ef3b1d5c05421" }
+iced_renderer = { git = "https://github.com/Azorlogh/iced", features = ["wgpu"], rev = "47af5890d8cf80b8bfd5909eee1ef3b1d5c05421" }
 iced_runtime = { git = "https://github.com/Azorlogh/iced", rev = "47af5890d8cf80b8bfd5909eee1ef3b1d5c05421" }
 iced_wgpu = { git = "https://github.com/Azorlogh/iced", rev = "47af5890d8cf80b8bfd5909eee1ef3b1d5c05421" }
 iced_widget = { git = "https://github.com/Azorlogh/iced", rev = "47af5890d8cf80b8bfd5909eee1ef3b1d5c05421" }
-iced_renderer = { git = "https://github.com/Azorlogh/iced", features = ["wgpu"], rev = "47af5890d8cf80b8bfd5909eee1ef3b1d5c05421" }
+
+cfg-if = "1.0.0"
 
 [dev-dependencies]
-bevy = "0.15"
-rand = "0.8"
+bevy = { version = "0.15", features = ["webgpu"] }
+getrandom = { version = "0.3.1", features = ["wasm_js"] }
+rand = "0.9"

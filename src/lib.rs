@@ -29,30 +29,29 @@
 #![deny(missing_docs)]
 
 use std::any::{Any, TypeId};
+use std::borrow::Cow;
 
-use std::sync::Arc;
-use std::sync::Mutex;
-
-use crate::render::{extract_iced_data, IcedNode, ViewportResource};
+use crate::render::{IcedNode, ViewportResource, extract_iced_data};
 
 use bevy_app::{App, Plugin, Update};
 use bevy_derive::{Deref, DerefMut};
 use bevy_ecs::prelude::{EventWriter, Query, With};
 use bevy_ecs::schedule::IntoSystemConfigs;
+#[cfg(target_arch = "wasm32")]
+use bevy_ecs::system::NonSend;
 use bevy_ecs::system::{NonSendMut, Res, ResMut, Resource, SystemParam};
 use bevy_input::touch::Touches;
 use bevy_render::render_graph::RenderGraph;
-use bevy_render::renderer::{render_system, RenderAdapter, RenderDevice, RenderQueue};
+use bevy_render::renderer::{RenderAdapter, RenderDevice, RenderQueue, render_system};
 use bevy_render::{ExtractSchedule, Render, RenderApp, RenderSet};
 use bevy_utils::HashMap;
 use bevy_window::{PrimaryWindow, Window};
-use iced_core::mouse::Cursor;
+use cfg_if::cfg_if;
 use iced_core::Theme;
+use iced_core::mouse::Cursor;
 use iced_runtime::user_interface::UserInterface;
 use iced_wgpu::Engine;
-// use iced_widget::graphics::backend::Text;
 use iced_widget::graphics::Viewport;
-// use iced_widget::style::Theme;
 
 /// Basic re-exports for all Iced-related stuff.
 ///
@@ -95,13 +94,18 @@ impl Plugin for IcedPlugin {
         let default_viewport = ViewportResource(default_viewport);
         let iced_resource: IcedResource = IcedProps::new(app, self).into();
 
-        app.insert_resource(default_viewport.clone())
-            .insert_resource(iced_resource.clone());
+        app.insert_resource(default_viewport.clone());
+        cfg_if! {
+            if #[cfg(target_arch = "wasm32")] {
+                app.insert_non_send_resource(iced_resource.clone());
+            } else {
+                app.insert_resource(iced_resource.clone());
+            }
+        }
 
         let render_app = app.sub_app_mut(RenderApp);
         render_app
             .insert_resource(default_viewport)
-            .insert_resource(iced_resource)
             .add_systems(ExtractSchedule, extract_iced_data)
             .add_systems(
                 Render,
@@ -109,6 +113,13 @@ impl Plugin for IcedPlugin {
                     .after(render_system)
                     .in_set(RenderSet::Render),
             );
+        cfg_if! {
+            if #[cfg(target_arch = "wasm32")] {
+                render_app.world_mut().insert_non_send_resource(iced_resource);
+            } else {
+                render_app.world_mut().insert_resource(iced_resource);
+            }
+        }
         setup_pipeline(&mut render_app.world_mut().get_resource_mut().unwrap());
     }
 }
@@ -117,7 +128,6 @@ struct IcedProps {
     pub engine: Engine,
     renderer: Renderer,
     debug: iced_runtime::Debug,
-    clipboard: iced_core::clipboard::Null,
 }
 
 impl IcedProps {
@@ -128,16 +138,21 @@ impl IcedProps {
             .unwrap()
             .wgpu_device();
         let queue = render_world.get_resource::<RenderQueue>().unwrap();
-
         let adapter = render_world.get_resource::<RenderAdapter>().unwrap();
-
         let engine = iced_wgpu::Engine::new(
-            &adapter,
+            adapter,
             device,
             queue,
             TEXTURE_FMT,
             Some(iced_wgpu::graphics::Antialiasing::MSAAx4),
         );
+
+        for &font in &config.fonts {
+            iced_graphics::text::font_system()
+                .write()
+                .expect("write lock on global FontSystem")
+                .load_font(Cow::from(font));
+        }
 
         Self {
             renderer: iced_wgpu::Renderer::new(
@@ -148,25 +163,58 @@ impl IcedProps {
             ),
             engine,
             debug: iced_runtime::Debug::new(),
-            clipboard: iced_core::clipboard::Null,
         }
     }
 }
 
-#[derive(Resource, Clone)]
-struct IcedResource(Arc<Mutex<IcedProps>>);
+#[cfg(target_arch = "wasm32")]
+#[allow(private_interfaces)]
+mod iced_resource {
+    use super::*;
 
-impl IcedResource {
-    fn lock(&self) -> std::sync::LockResult<std::sync::MutexGuard<IcedProps>> {
-        self.0.lock()
+    use std::cell::{RefCell, RefMut};
+    use std::rc::Rc;
+
+    #[derive(Clone)]
+    pub struct IcedResource(Rc<RefCell<IcedProps>>);
+
+    impl IcedResource {
+        pub fn lock(&self) -> RefMut<IcedProps> {
+            self.0.borrow_mut()
+        }
+    }
+
+    impl From<IcedProps> for IcedResource {
+        fn from(value: IcedProps) -> Self {
+            Self(Rc::new(RefCell::new(value)))
+        }
     }
 }
 
-impl From<IcedProps> for IcedResource {
-    fn from(value: IcedProps) -> Self {
-        Self(Arc::new(Mutex::new(value)))
+#[cfg(not(target_arch = "wasm32"))]
+#[allow(private_interfaces)]
+mod iced_resource {
+    use super::*;
+
+    use std::sync::{Arc, Mutex, MutexGuard};
+
+    #[derive(Resource, Clone)]
+    pub struct IcedResource(Arc<Mutex<IcedProps>>);
+
+    impl IcedResource {
+        pub fn lock(&self) -> MutexGuard<IcedProps> {
+            self.0.lock().unwrap()
+        }
+    }
+
+    impl From<IcedProps> for IcedResource {
+        fn from(value: IcedProps) -> Self {
+            Self(Arc::new(Mutex::new(value)))
+        }
     }
 }
+
+use iced_resource::IcedResource;
 
 fn setup_pipeline(graph: &mut RenderGraph) {
     graph.add_node(render::IcedPass, IcedNode);
@@ -237,6 +285,9 @@ pub(crate) struct DidDraw(std::sync::atomic::AtomicBool);
 #[derive(SystemParam)]
 pub struct IcedContext<'w, 's, Message: bevy_ecs::event::Event> {
     viewport: Res<'w, ViewportResource>,
+    #[cfg(target_arch = "wasm32")]
+    props: NonSend<'w, IcedResource>,
+    #[cfg(not(target_arch = "wasm32"))]
     props: Res<'w, IcedResource>,
     settings: Res<'w, IcedSettings>,
     windows: Query<'w, 's, &'static Window, With<PrimaryWindow>>,
@@ -247,17 +298,15 @@ pub struct IcedContext<'w, 's, Message: bevy_ecs::event::Event> {
     touches: Res<'w, Touches>,
 }
 
-impl<'w, 's, M: bevy_ecs::event::Event> IcedContext<'w, 's, M> {
+impl<M: bevy_ecs::event::Event> IcedContext<'_, '_, M> {
     /// Display an [`Element`] to the screen.
     pub fn display<'a>(
         &'a mut self,
         element: impl Into<iced_core::Element<'a, M, Theme, Renderer>>,
     ) {
-        let IcedProps {
-            ref mut renderer,
-            ref mut clipboard,
-            ..
-        } = &mut *self.props.lock().unwrap();
+        let &mut IcedProps {
+            ref mut renderer, ..
+        } = &mut *self.props.lock();
         let bounds = self.viewport.logical_size();
 
         let element = element.into();
@@ -282,7 +331,7 @@ impl<'w, 's, M: bevy_ecs::event::Event> IcedContext<'w, 's, M> {
             self.events.as_slice(),
             cursor,
             renderer,
-            clipboard,
+            &mut iced_core::clipboard::Null,
             &mut messages,
         );
 

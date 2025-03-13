@@ -1,8 +1,11 @@
 use bevy::prelude::*;
 use bevy_iced::iced::widget::text;
-use bevy_iced::{IcedContext, IcedPlugin};
-use bevy_input::keyboard::KeyboardInput;
+use bevy_iced::{IcedContext, IcedPlugin, iced};
 use bevy_input::ButtonState;
+use bevy_input::keyboard::KeyboardInput;
+
+const NOTOSANS_REGULAR: iced::Font = iced::Font::with_name("Noto Sans");
+const NOTOSANS_REGULAR_BYTES: &[u8] = include_bytes!("../assets/fonts/NotoSans-Regular.ttf");
 
 #[derive(Event)]
 pub enum UiMessage {}
@@ -13,7 +16,13 @@ pub struct UiActive(bool);
 pub fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_plugins(IcedPlugin::default())
+        .add_plugins(IcedPlugin {
+            fonts: vec![NOTOSANS_REGULAR_BYTES],
+            settings: iced::Settings {
+                default_font: NOTOSANS_REGULAR,
+                ..Default::default()
+            },
+        })
         .add_event::<UiMessage>()
         .insert_resource(UiActive(true))
         .add_systems(Update, toggle_system)

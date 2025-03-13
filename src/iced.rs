@@ -7,8 +7,8 @@ pub use iced_core::border;
 pub use iced_core::event;
 pub use iced_core::gradient;
 pub use iced_core::{
-    color, Alignment, Background, Border, Color, ContentFit, Degrees, Gradient, Length, Padding,
-    Pixels, Point, Radians, Rectangle, Size, Theme, Vector,
+    Alignment, Background, Border, Color, ContentFit, Degrees, Gradient, Length, Padding, Pixels,
+    Point, Radians, Rectangle, Size, Theme, Vector, color,
 };
 
 pub mod clipboard {

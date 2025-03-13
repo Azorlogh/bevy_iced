@@ -1,5 +1,5 @@
-use crate::iced;
 use crate::IcedContext;
+use crate::iced;
 use bevy_math::Vec2;
 use bevy_window::Window;
 
