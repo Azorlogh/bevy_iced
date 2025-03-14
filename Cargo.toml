@@ -30,6 +30,6 @@ iced_widget = { git = "https://github.com/Azorlogh/iced", rev = "47af5890d8cf80b
 cfg-if = "1.0.0"
 
 [dev-dependencies]
-bevy = { version = "0.15", features = ["webgpu"] }
+bevy = { version = "0.15", default-features = false, features = ["bevy_core_pipeline", "bevy_sprite", "bevy_window", "multi_threaded", "webgpu", "x11"] }
 getrandom = { version = "0.3.1", features = ["wasm_js"] }
 rand = "0.9"

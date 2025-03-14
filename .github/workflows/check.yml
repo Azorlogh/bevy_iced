@@ -8,7 +8,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo clippy -- -D warnings
       - run: cargo clippy --all-features --all-targets -- -D warnings
   clippy-nightly-wasm32-unknown-unknown:
     name: clippy nightly wasm32-unknown-unknown
@@ -18,6 +17,5 @@ jobs:
       - uses: dtolnay/rust-toolchain@nightly
         with:
           targets: wasm32-unknown-unknown
-          components: rust-src
-      - run: cargo clippy --target wasm32-unknown-unknown -- -D warnings
+          components: clippy,rust-src
       - run: cargo clippy --target wasm32-unknown-unknown --all-features --all-targets -- -D warnings
