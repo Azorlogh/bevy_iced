@@ -33,20 +33,19 @@ pub fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
-                present_mode: bevy_window::PresentMode::AutoNoVsync,
+                present_mode: bevy_window::PresentMode::AutoVsync,
                 ..Default::default()
             }),
             ..Default::default()
         }))
         .add_plugins((
-            IcedPlugin {
-                fonts: vec![NOTOSANS_REGULAR_BYTES],
-                settings: iced::Settings {
+            IcedPlugin::<UiMessage>::default()
+                .fonts(vec![NOTOSANS_REGULAR_BYTES])
+                .settings(iced::Settings {
                     default_font: NOTOSANS_REGULAR,
                     ..Default::default()
-                },
-            },
-            FrameTimeDiagnosticsPlugin,
+                }),
+            FrameTimeDiagnosticsPlugin::default(),
             LogDiagnosticsPlugin::default(),
         ))
         .add_event::<UiMessage>()

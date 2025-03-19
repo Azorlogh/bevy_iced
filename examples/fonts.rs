@@ -16,14 +16,15 @@ pub enum UiMessage {}
 pub fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_plugins(IcedPlugin {
-            fonts: vec![ALPHAPROTA_FONT_BYTES, NOTOSANS_REGULAR_BYTES],
-            settings: iced::Settings {
-                default_text_size: 40.0.into(),
-                default_font: NOTOSANS_REGULAR,
-                ..Default::default()
-            },
-        })
+        .add_plugins(
+            IcedPlugin::<UiMessage>::default()
+                .fonts(vec![ALPHAPROTA_FONT_BYTES, NOTOSANS_REGULAR_BYTES])
+                .settings(iced::Settings {
+                    default_text_size: 40.0.into(),
+                    default_font: NOTOSANS_REGULAR,
+                    ..Default::default()
+                }),
+        )
         .add_event::<UiMessage>()
         .add_systems(Update, ui_system)
         .run();

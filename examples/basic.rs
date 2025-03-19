@@ -11,13 +11,14 @@ pub enum UiMessage {}
 pub fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_plugins(IcedPlugin {
-            fonts: vec![NOTOSANS_REGULAR_BYTES],
-            settings: iced::Settings {
-                default_font: NOTOSANS_REGULAR,
-                ..Default::default()
-            },
-        })
+        .add_plugins(
+            IcedPlugin::<UiMessage>::default()
+                .fonts(vec![NOTOSANS_REGULAR_BYTES])
+                .settings(iced::Settings {
+                    default_font: NOTOSANS_REGULAR,
+                    ..Default::default()
+                }),
+        )
         .add_event::<UiMessage>()
         .add_systems(Update, ui_system)
         .run();

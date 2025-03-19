@@ -1,11 +1,5 @@
 use bevy_derive::{Deref, DerefMut};
-use bevy_ecs::prelude::Query;
-#[cfg(target_arch = "wasm32")]
-use bevy_ecs::system::NonSend;
-use bevy_ecs::{
-    system::{Commands, Res, Resource},
-    world::World,
-};
+use bevy_ecs::prelude::*;
 use bevy_render::render_graph::RenderLabel;
 use bevy_render::renderer::{RenderDevice, RenderQueue};
 use bevy_render::{
@@ -14,12 +8,11 @@ use bevy_render::{
     renderer::RenderContext,
     view::ExtractedWindows,
 };
-use bevy_window::Window;
+use bevy_window::prelude::*;
+use cfg_if::cfg_if;
 use iced_core::Size;
 use iced_wgpu::wgpu::TextureFormat;
 use iced_widget::graphics::Viewport;
-
-use cfg_if::cfg_if;
 
 use crate::{DidDraw, IcedProps, IcedResource, IcedSettings};
 
@@ -29,14 +22,14 @@ pub struct IcedPass;
 pub const TEXTURE_FMT: TextureFormat = TextureFormat::Bgra8UnormSrgb;
 
 #[derive(Resource, Deref, DerefMut, Clone)]
-pub struct ViewportResource(pub Viewport);
+pub struct IcedViewport(pub Viewport);
 
 pub fn update_viewport(
     windows: Query<&Window>,
     iced_settings: Res<IcedSettings>,
     mut commands: Commands,
 ) {
-    let window = windows.single();
+    let window = windows.single().unwrap();
     let scale_factor = iced_settings
         .scale_factor
         .unwrap_or_else(|| window.scale_factor().into());
@@ -44,7 +37,7 @@ pub fn update_viewport(
         Size::new(window.physical_width(), window.physical_height()),
         scale_factor,
     );
-    commands.insert_resource(ViewportResource(viewport));
+    commands.insert_resource(IcedViewport(viewport));
 }
 
 // Same as DidDraw, but as a regular bool instead of an atomic.
@@ -53,7 +46,7 @@ struct DidDrawBasic(bool);
 
 pub fn extract_iced_data(
     mut commands: Commands,
-    viewport: Extract<Res<ViewportResource>>,
+    viewport: Extract<Res<IcedViewport>>,
     did_draw: Extract<Res<DidDraw>>,
 ) {
     commands.insert_resource(viewport.clone());
@@ -107,7 +100,7 @@ impl Node for IcedNode {
         };
         let render_device = world.resource::<RenderDevice>().wgpu_device();
         let render_queue = world.resource::<RenderQueue>();
-        let viewport = world.resource::<ViewportResource>();
+        let viewport = world.resource::<IcedViewport>();
 
         if !world.get_resource::<DidDrawBasic>().is_some_and(|x| x.0) {
             return Ok(());

@@ -1,18 +1,24 @@
-use crate::conversions;
 use bevy_derive::{Deref, DerefMut};
-use bevy_ecs::{
-    prelude::EventReader,
-    system::{Res, ResMut, Resource, SystemParam},
-};
-use bevy_input::keyboard::KeyCode;
+use bevy_ecs::prelude::*;
+use bevy_ecs::system::SystemParam;
+use bevy_input::prelude::*;
 use bevy_input::touch::TouchInput;
 use bevy_input::{
-    ButtonInput, ButtonState,
+    ButtonState,
     keyboard::KeyboardInput,
     mouse::{MouseButtonInput, MouseWheel},
 };
-use bevy_window::{CursorEntered, CursorLeft, CursorMoved};
-use iced_core::{Event as IcedEvent, Point, keyboard, mouse};
+use bevy_window::PrimaryWindow;
+use bevy_window::prelude::*;
+use iced_core::{
+    Event as IcedEvent, Point, Theme, keyboard,
+    mouse::{self, Cursor},
+};
+use iced_runtime::UserInterface;
+
+use crate::{
+    IcedProps, Renderer, conversions, iced_resource::IcedResource, render::IcedViewport, utils,
+};
 
 #[derive(Resource, Deref, DerefMut, Default)]
 pub struct IcedEventQueue(Vec<iced_core::Event>);
@@ -126,4 +132,48 @@ pub fn process_input(
     for ev in events.touch_input.read() {
         event_queue.push(IcedEvent::Touch(conversions::touch_event(ev)));
     }
+}
+
+#[derive(Resource, Deref, DerefMut, Default)]
+pub struct IcedCursor(Cursor);
+
+#[allow(clippy::too_many_arguments)]
+pub fn iced_update<M: bevy_ecs::event::Event>(
+    viewport: Res<IcedViewport>,
+    #[cfg(target_arch = "wasm32")] props: NonSend<IcedResource>,
+    #[cfg(not(target_arch = "wasm32"))] props: Res<IcedResource>,
+    windows: Query<&mut Window, With<PrimaryWindow>>,
+    mut events: ResMut<IcedEventQueue>,
+    touches: Res<Touches>,
+    mut ui: NonSendMut<Option<UserInterface<'static, M, Theme, Renderer>>>,
+    mut message_writer: EventWriter<M>,
+    mut cursor: ResMut<IcedCursor>,
+) {
+    let bounds = viewport.logical_size();
+    let &mut IcedProps {
+        ref mut renderer, ..
+    } = &mut *props.lock();
+    *cursor = IcedCursor({
+        let window = windows.single().unwrap();
+        match window.cursor_position() {
+            Some(position) => {
+                Cursor::Available(utils::process_cursor_position(position, bounds, window))
+            }
+            None => utils::process_touch_input(&touches, &events)
+                .map(Cursor::Available)
+                .unwrap_or(Cursor::Unavailable),
+        }
+    });
+    let Some(ui) = ui.as_mut() else { return };
+
+    let mut messages = Vec::<M>::new();
+    let (_state, _event_statuses) = ui.update(
+        events.as_slice(),
+        **cursor,
+        renderer,
+        &mut iced_core::clipboard::Null,
+        &mut messages,
+    );
+    events.clear();
+    message_writer.write_batch(messages);
 }
