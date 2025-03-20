@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy_iced::iced::widget::text;
-use bevy_iced::{IcedContext, IcedPlugin, iced};
+use bevy_iced::{IcedContext, IcedPlugin, IcedProgramSet, iced};
 use bevy_input::ButtonState;
 use bevy_input::keyboard::KeyboardInput;
 
@@ -26,8 +26,15 @@ pub fn main() {
         )
         .add_event::<UiMessage>()
         .insert_resource(UiActive(true))
-        .add_systems(Update, toggle_system)
-        .add_systems(Update, ui_system.run_if(resource_equals(UiActive(true))))
+        .add_systems(
+            Update,
+            (
+                toggle_system,
+                ui_system
+                    .in_set(IcedProgramSet::View)
+                    .run_if(resource_equals(UiActive(true))),
+            ),
+        )
         .run();
 }
 

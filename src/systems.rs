@@ -8,13 +8,8 @@ use bevy_input::{
     keyboard::KeyboardInput,
     mouse::{MouseButtonInput, MouseWheel},
 };
-use bevy_tasks::Task;
-use bevy_tasks::prelude::*;
 use bevy_window::prelude::*;
 use bevy_window::{PrimaryWindow, WindowFocused};
-use bevy_winit::{EventLoopProxyWrapper, WakeUp};
-use cfg_if::cfg_if;
-use iced_core::time::Instant;
 use iced_core::window::Event as IcedWindowEvent;
 use iced_core::{
     Event as IcedEvent, Point, Theme, keyboard,
@@ -22,6 +17,7 @@ use iced_core::{
 };
 use iced_runtime::UserInterface;
 
+use crate::redraw_requestor::IcedRedrawRequest;
 use crate::{
     IcedProps, Renderer, conversions, iced_resource::IcedResource, render::IcedViewport, utils,
 };
@@ -147,76 +143,20 @@ pub fn process_input(
             IcedWindowEvent::Unfocused
         }));
     }
-
-    event_queue.push(IcedEvent::Window(IcedWindowEvent::RedrawRequested(
-        Instant::now(),
-    )));
 }
 
 #[derive(Resource, Deref, DerefMut, Default)]
 pub struct IcedCursor(Cursor);
 
-/// A trait for types that can be used to request a redraw.
-pub trait RedrawRequest: Event + Send + Sync + 'static {
-    /// The event that should be sent to request a redraw.
-    const REDRAW_REQUEST: Self;
-}
-
-impl RedrawRequest for WakeUp {
-    const REDRAW_REQUEST: Self = Self;
-}
-
-#[derive(SystemParam)]
-pub struct RedrawRequestor<'w, 's, U: RedrawRequest> {
-    task: Local<'s, Option<Task<()>>>,
-    event_loop_proxy: Res<'w, EventLoopProxyWrapper<U>>,
-}
-
-impl<E: RedrawRequest> RedrawRequestor<'_, '_, E> {
-    fn request_redraw(&mut self) {
-        self.task.take();
-        let _ = self.event_loop_proxy.send_event(E::REDRAW_REQUEST);
-    }
-
-    fn request_redraw_at(&mut self, instant: Instant) {
-        let event_loop_proxy = self.event_loop_proxy.clone();
-        let f = async move {
-            cfg_if! {
-                if #[cfg(target_arch = "wasm32")] {
-                    gloo_timers::future::TimeoutFuture::new(
-                        instant
-                            .saturating_duration_since(Instant::now())
-                            .as_millis().min(u32::MAX as _) as u32
-                    ).await;
-                } else if #[cfg(feature = "tokio")] {
-                    tokio::time::sleep_until(instant.into()).await;
-                } else if #[cfg(feature = "smol")] {
-                    async_io::Timer::at(instant).await;
-                } else {
-                    compile_error!("Either the `tokio` or `smol` feature must be enabled");
-                }
-            }
-            let _ = event_loop_proxy.send_event(E::REDRAW_REQUEST);
-        };
-        #[cfg(all(not(target_arch = "wasm32"), feature = "tokio"))]
-        let f = async_compat::Compat::new(f);
-        let task = IoTaskPool::get().spawn(f);
-        *self.task = Some(task);
-    }
-}
-
-#[allow(clippy::too_many_arguments)]
-pub fn iced_update<M: bevy_ecs::event::Event, U: RedrawRequest>(
-    viewport: Res<IcedViewport>,
+pub fn iced_update<M: bevy_ecs::event::Event>(
+    (viewport, windows): (Res<IcedViewport>, Query<&mut Window, With<PrimaryWindow>>),
     #[cfg(target_arch = "wasm32")] props: NonSend<IcedResource>,
     #[cfg(not(target_arch = "wasm32"))] props: Res<IcedResource>,
-    windows: Query<&mut Window, With<PrimaryWindow>>,
-    mut events: ResMut<IcedEventQueue>,
-    touches: Res<Touches>,
+    (mut events, touches): (ResMut<IcedEventQueue>, Res<Touches>),
     mut ui: NonSendMut<Option<UserInterface<'static, M, Theme, Renderer>>>,
     mut message_writer: EventWriter<M>,
     mut cursor: ResMut<IcedCursor>,
-    mut redraw_requestor: RedrawRequestor<U>,
+    mut iced_redraw_request: ResMut<IcedRedrawRequest>,
 ) {
     let bounds = viewport.logical_size();
     let &mut IcedProps {
@@ -244,21 +184,6 @@ pub fn iced_update<M: bevy_ecs::event::Event, U: RedrawRequest>(
         &mut messages,
     );
     events.clear();
+    iced_redraw_request.update(state);
     message_writer.write_batch(messages);
-
-    {
-        use iced_core::window::RedrawRequest;
-        use iced_runtime::user_interface::State;
-        match state {
-            State::Updated {
-                redraw_request,
-                input_method: _,
-            } => match redraw_request {
-                RedrawRequest::NextFrame => redraw_requestor.request_redraw(),
-                RedrawRequest::At(instant) => redraw_requestor.request_redraw_at(instant),
-                RedrawRequest::Wait => {}
-            },
-            State::Outdated => {}
-        }
-    }
 }

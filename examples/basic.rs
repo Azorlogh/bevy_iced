@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy_iced::iced::widget::text;
-use bevy_iced::{IcedContext, IcedPlugin, iced};
+use bevy_iced::{IcedContext, IcedPlugin, IcedProgramSet, iced};
 
 const NOTOSANS_REGULAR: iced::Font = iced::Font::with_name("Noto Sans");
 const NOTOSANS_REGULAR_BYTES: &[u8] = include_bytes!("../assets/fonts/NotoSans-Regular.ttf");
@@ -20,7 +20,7 @@ pub fn main() {
                 }),
         )
         .add_event::<UiMessage>()
-        .add_systems(Update, ui_system)
+        .add_systems(Update, ui_system.in_set(IcedProgramSet::View))
         .run();
 }
 

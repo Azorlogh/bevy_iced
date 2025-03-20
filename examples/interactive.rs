@@ -3,11 +3,14 @@ use bevy::{
     input::mouse::{MouseButtonInput, MouseWheel},
     prelude::*,
 };
-use bevy_iced::iced::{
-    self, Alignment, Style,
-    widget::{Button, Column, Row, slider, text, text_input},
-};
 use bevy_iced::{IcedContext, IcedPlugin, IcedSettings};
+use bevy_iced::{
+    IcedProgramSet,
+    iced::{
+        self, Alignment, Style,
+        widget::{Button, Column, Row, slider, text, text_input},
+    },
+};
 use rand::random as rng;
 
 const NOTOSANS_REGULAR: iced::Font = iced::Font::with_name("Noto Sans");
@@ -33,7 +36,7 @@ pub fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
-                present_mode: bevy_window::PresentMode::AutoVsync,
+                present_mode: bevy_window::PresentMode::AutoNoVsync,
                 ..Default::default()
             }),
             ..Default::default()
@@ -64,7 +67,13 @@ pub fn main() {
         .add_systems(Startup, build_program)
         .add_systems(
             Update,
-            (tick, box_system, update_scale_factor, toggle_ui, ui_system),
+            (
+                tick,
+                box_system.in_set(IcedProgramSet::Update),
+                update_scale_factor,
+                toggle_ui,
+                ui_system.in_set(IcedProgramSet::View),
+            ),
         )
         .run();
 }

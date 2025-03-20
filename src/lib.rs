@@ -46,8 +46,9 @@ use iced_runtime::user_interface::UserInterface;
 use iced_wgpu::Engine;
 use iced_widget::graphics::Viewport;
 
+pub use redraw_requestor::RedrawRequestVariant;
+use redraw_requestor::{IcedRedrawRequest, RedrawRequestor};
 use render::IcedViewport;
-pub use systems::RedrawRequest;
 use systems::{IcedCursor, IcedEventQueue};
 
 /// Basic re-exports for all Iced-related stuff.
@@ -57,6 +58,7 @@ use systems::{IcedCursor, IcedEventQueue};
 pub mod iced;
 
 mod conversions;
+mod redraw_requestor;
 mod render;
 mod systems;
 mod utils;
@@ -100,21 +102,22 @@ impl<Message, WinitUserEvent> IcedPlugin<Message, WinitUserEvent> {
     }
 }
 
-impl<M: Event, U: RedrawRequest> Plugin for IcedPlugin<M, U> {
+impl<M: Event, U: RedrawRequestVariant> Plugin for IcedPlugin<M, U> {
     fn build(&self, app: &mut App) {
         app.add_systems(
             PreUpdate,
             (
-                (systems::process_input, render::update_viewport)
-                    .before(systems::iced_update::<M, U>),
-                systems::iced_update::<M, U>,
+                (systems::process_input, render::update_viewport).before(systems::iced_update::<M>),
+                systems::iced_update::<M>,
             ),
         )
         .init_resource::<DidDraw>()
         .init_resource::<IcedSettings>()
         .insert_non_send_resource::<Option<UserInterface<M, Theme, Renderer>>>(None)
         .init_resource::<IcedEventQueue>()
-        .init_resource::<IcedCursor>();
+        .init_resource::<IcedCursor>()
+        .init_resource::<IcedRedrawRequest>()
+        .configure_sets(Update, IcedProgramSet::View.after(IcedProgramSet::Update));
     }
 
     fn finish(&self, app: &mut App) {
@@ -150,6 +153,15 @@ impl<M: Event, U: RedrawRequest> Plugin for IcedPlugin<M, U> {
         }
         setup_pipeline(&mut render_app.world_mut().get_resource_mut().unwrap());
     }
+}
+
+/// SystemSet for specifying which systems perform view and update logic.
+#[derive(SystemSet, Debug, Hash, Eq, PartialEq, Clone)]
+pub enum IcedProgramSet {
+    /// The set of systems that update the UI state.
+    Update,
+    /// The system that renders the UI.
+    View,
 }
 
 struct IcedProps {
@@ -295,7 +307,11 @@ pub(crate) struct DidDraw(std::sync::atomic::AtomicBool);
 /// `IcedContext<T>` requires an event system to be defined in the [`App`].
 /// Do so by invoking `app.add_event::<T>()` when constructing your App.
 #[derive(SystemParam)]
-pub struct IcedContext<'w, Message: bevy_ecs::event::Event> {
+pub struct IcedContext<'w, 's, Message, WinitUserEvent = WakeUp>
+where
+    Message: bevy_ecs::event::Event,
+    WinitUserEvent: RedrawRequestVariant,
+{
     viewport: Res<'w, IcedViewport>,
     #[cfg(target_arch = "wasm32")]
     props: NonSend<'w, IcedResource>,
@@ -305,9 +321,15 @@ pub struct IcedContext<'w, Message: bevy_ecs::event::Event> {
     did_draw: ResMut<'w, DidDraw>,
     ui: NonSendMut<'w, Option<UserInterface<'static, Message, Theme, Renderer>>>,
     cursor: Res<'w, IcedCursor>,
+    message_writer: EventWriter<'w, Message>,
+    redraw_requestor: RedrawRequestor<'w, 's, WinitUserEvent>,
 }
 
-impl<M: bevy_ecs::event::Event> IcedContext<'_, M> {
+impl<M, U> IcedContext<'_, '_, M, U>
+where
+    M: bevy_ecs::event::Event,
+    U: RedrawRequestVariant,
+{
     /// Display an [`Element`] to the screen.
     pub fn display(&mut self, element: impl Into<iced_core::Element<'static, M, Theme, Renderer>>) {
         let &mut IcedProps {
@@ -315,6 +337,7 @@ impl<M: bevy_ecs::event::Event> IcedContext<'_, M> {
         } = &mut *self.props.lock();
         let bounds = self.viewport.logical_size();
 
+        // Rebuild the UI using the new element.
         let element = element.into();
         let cache = self
             .ui
@@ -322,6 +345,24 @@ impl<M: bevy_ecs::event::Event> IcedContext<'_, M> {
             .map(UserInterface::into_cache)
             .unwrap_or_default();
         let mut ui = UserInterface::build(element, bounds, cache, renderer);
+
+        // Run the UI update function with a single redraw request.
+        // This is necessary to account for widget state that depends on external state (like time).
+        let mut messages = Vec::<M>::new();
+        let events = [iced_core::Event::Window(
+            iced_core::window::Event::RedrawRequested(iced_core::time::Instant::now()),
+        )];
+        let (state, _event_statuses) = ui.update(
+            events.as_slice(),
+            **self.cursor,
+            renderer,
+            &mut iced_core::clipboard::Null,
+            &mut messages,
+        );
+        self.redraw_requestor.finish(state);
+        self.message_writer.write_batch(messages);
+
+        // Draw the UI.
         ui.draw(
             renderer,
             &self.settings.theme,

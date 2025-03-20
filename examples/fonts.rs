@@ -1,9 +1,12 @@
 use bevy::prelude::*;
-use bevy_iced::iced::{
-    Font,
-    widget::{column, text},
-};
 use bevy_iced::{IcedContext, IcedPlugin, iced};
+use bevy_iced::{
+    IcedProgramSet,
+    iced::{
+        Font,
+        widget::{column, text},
+    },
+};
 
 const ALPHAPROTA_FONT: Font = Font::with_name("Alpha Prota");
 const ALPHAPROTA_FONT_BYTES: &[u8] = include_bytes!("../assets/fonts/AlphaProta.ttf");
@@ -26,7 +29,7 @@ pub fn main() {
                 }),
         )
         .add_event::<UiMessage>()
-        .add_systems(Update, ui_system)
+        .add_systems(Update, ui_system.in_set(IcedProgramSet::View))
         .run();
 }
 
