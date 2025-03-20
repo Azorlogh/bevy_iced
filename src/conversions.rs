@@ -1,17 +1,18 @@
-use crate::iced::{
-    Point,
-    touch::{self, Finger},
-};
 use bevy_input::keyboard::{Key as BevyKey, NativeKeyCode as BevyNativeCode};
-use bevy_input::prelude::MouseButton;
-use bevy_input::touch::{TouchInput, TouchPhase};
-use bevy_math::Vec2;
+use bevy_input::prelude::*;
+use bevy_input::touch::TouchPhase;
+use bevy_math::prelude::*;
 use iced_core::{
     SmolStr,
     keyboard::{
         Key as IcedKey,
         key::{Code, Named as IcedNamed, NativeCode as IcedNativeCode, Physical},
     },
+};
+
+use crate::iced::{
+    Point,
+    touch::{self, Finger},
 };
 
 pub fn key_text(key: &IcedKey) -> Option<SmolStr> {

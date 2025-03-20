@@ -29,6 +29,7 @@
 #![deny(missing_docs)]
 
 use std::borrow::Cow;
+use std::marker::PhantomData;
 
 use bevy_app::prelude::*;
 use bevy_derive::{Deref, DerefMut};
@@ -38,6 +39,7 @@ use bevy_render::prelude::*;
 use bevy_render::render_graph::RenderGraph;
 use bevy_render::renderer::{RenderAdapter, RenderDevice, RenderQueue, render_system};
 use bevy_render::{Render, RenderApp, RenderSet};
+use bevy_winit::WakeUp;
 use cfg_if::cfg_if;
 use iced_core::Theme;
 use iced_runtime::user_interface::UserInterface;
@@ -45,6 +47,7 @@ use iced_wgpu::Engine;
 use iced_widget::graphics::Viewport;
 
 use render::IcedViewport;
+pub use systems::RedrawRequest;
 use systems::{IcedCursor, IcedEventQueue};
 
 /// Basic re-exports for all Iced-related stuff.
@@ -62,24 +65,28 @@ mod utils;
 pub type Renderer = iced_wgpu::Renderer;
 
 /// The main feature of `bevy_iced`.
-/// Add this to your [`App`] by calling `app.add_plugin(bevy_iced::IcedPlugin::default())`.
-pub struct IcedPlugin<Message> {
+/// Add this to your [`App`] by calling `app.add_plugin(bevy_iced::IcedPlugin::<Message>::default())`.
+///
+/// `Message` is the type of of message that is produced by the UI.
+/// `WinitUserEvent` is the UserEvent type for the Winit event loop.
+/// If you are not overriding this type in the `WinitPlugin`, you don't need to set this manually.
+pub struct IcedPlugin<Message, WinitUserEvent = WakeUp> {
     settings: iced::Settings,
     fonts: Vec<&'static [u8]>,
-    _marker: std::marker::PhantomData<Message>,
+    _marker: PhantomData<(Message, WinitUserEvent)>,
 }
 
-impl<Message> Default for IcedPlugin<Message> {
+impl<Message, WinitUserEvent> Default for IcedPlugin<Message, WinitUserEvent> {
     fn default() -> Self {
         Self {
             settings: Default::default(),
             fonts: Default::default(),
-            _marker: std::marker::PhantomData,
+            _marker: PhantomData,
         }
     }
 }
 
-impl<Message> IcedPlugin<Message> {
+impl<Message, WinitUserEvent> IcedPlugin<Message, WinitUserEvent> {
     /// Set the Iced settings.
     pub fn settings(mut self, settings: iced::Settings) -> Self {
         self.settings = settings;
@@ -93,13 +100,14 @@ impl<Message> IcedPlugin<Message> {
     }
 }
 
-impl<M: Event> Plugin for IcedPlugin<M> {
+impl<M: Event, U: RedrawRequest> Plugin for IcedPlugin<M, U> {
     fn build(&self, app: &mut App) {
         app.add_systems(
             PreUpdate,
             (
-                (systems::process_input, render::update_viewport).before(systems::iced_update::<M>),
-                systems::iced_update::<M>,
+                (systems::process_input, render::update_viewport)
+                    .before(systems::iced_update::<M, U>),
+                systems::iced_update::<M, U>,
             ),
         )
         .init_resource::<DidDraw>()
@@ -151,7 +159,7 @@ struct IcedProps {
 }
 
 impl IcedProps {
-    fn new<M>(app: &App, config: &IcedPlugin<M>) -> Self {
+    fn new<M, U>(app: &App, config: &IcedPlugin<M, U>) -> Self {
         let render_world = &app.sub_app(RenderApp).world();
         let device = render_world
             .get_resource::<RenderDevice>()
