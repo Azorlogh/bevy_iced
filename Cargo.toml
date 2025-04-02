@@ -16,15 +16,15 @@ tokio = ["dep:tokio", "dep:async-compat"]
 smol = ["dep:async-io"]
 
 [dependencies]
-bevy_app = "0.16.0-rc.1"
-bevy_derive = "0.16.0-rc.1"
-bevy_ecs = "0.16.0-rc.1"
-bevy_input = "0.16.0-rc.1"
-bevy_math = "0.16.0-rc.1"
-bevy_render = "0.16.0-rc.1"
-bevy_tasks = "0.16.0-rc.1"
-bevy_window = "0.16.0-rc.1"
-bevy_winit = "0.16.0-rc.1"
+bevy_app = "0.16.0-rc.3"
+bevy_derive = "0.16.0-rc.3"
+bevy_ecs = "0.16.0-rc.3"
+bevy_input = "0.16.0-rc.3"
+bevy_math = "0.16.0-rc.3"
+bevy_render = "0.16.0-rc.3"
+bevy_tasks = "0.16.0-rc.3"
+bevy_window = "0.16.0-rc.3"
+bevy_winit = "0.16.0-rc.3"
 
 iced_core = { git = "https://github.com/Argeo-Robotics/iced.git", rev = "2270768457f01c52456fb3e050e7ad6d57cfb962" }
 iced_graphics = { git = "https://github.com/Argeo-Robotics/iced.git", rev = "2270768457f01c52456fb3e050e7ad6d57cfb962" }
