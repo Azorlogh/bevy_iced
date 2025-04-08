@@ -43,7 +43,6 @@ use bevy_winit::WakeUp;
 use cfg_if::cfg_if;
 use iced_core::Theme;
 use iced_runtime::user_interface::UserInterface;
-use iced_wgpu::Engine;
 use iced_widget::graphics::Viewport;
 
 pub use redraw_requestor::RedrawRequestVariant;
@@ -165,9 +164,7 @@ pub enum IcedProgramSet {
 }
 
 struct IcedProps {
-    pub engine: Engine,
     renderer: Renderer,
-    debug: iced_runtime::Debug,
 }
 
 impl IcedProps {
@@ -181,8 +178,8 @@ impl IcedProps {
         let adapter = render_world.get_resource::<RenderAdapter>().unwrap();
         let engine = iced_wgpu::Engine::new(
             adapter,
-            device,
-            queue,
+            (*device).clone(),
+            (****queue).clone(),
             render::TEXTURE_FMT,
             Some(iced_wgpu::graphics::Antialiasing::MSAAx4),
         );
@@ -196,13 +193,10 @@ impl IcedProps {
 
         Self {
             renderer: iced_wgpu::Renderer::new(
-                device,
-                &engine,
+                engine,
                 config.settings.default_font,
                 config.settings.default_text_size,
             ),
-            engine,
-            debug: iced_runtime::Debug::new(),
         }
     }
 }
