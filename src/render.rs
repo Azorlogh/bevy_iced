@@ -1,7 +1,6 @@
 use bevy_derive::{Deref, DerefMut};
 use bevy_ecs::prelude::*;
 use bevy_render::render_graph::RenderLabel;
-use bevy_render::renderer::{RenderDevice, RenderQueue};
 use bevy_render::{
     Extract,
     render_graph::{Node, NodeRunError, RenderGraphContext},
@@ -59,7 +58,7 @@ pub fn recall_staging_belt(
     #[cfg(target_arch = "wasm32")] iced: NonSend<IcedResource>,
     #[cfg(not(target_arch = "wasm32"))] iced: Res<IcedResource>,
 ) {
-    iced.lock().engine.end_frame();
+    iced.lock().renderer.staging_belt_recall();
 }
 
 pub struct IcedNode;
@@ -85,40 +84,26 @@ impl Node for IcedNode {
             if #[cfg(target_arch = "wasm32")] {
                 let IcedProps {
                     renderer,
-                    debug,
-                    engine,
                     ..
                 } = &mut *world.non_send_resource::<IcedResource>().lock();
             } else {
                 let IcedProps {
                     renderer,
-                    debug,
-                    engine,
                     ..
                 } = &mut *world.resource::<IcedResource>().lock();
             }
         };
-        let render_device = world.resource::<RenderDevice>().wgpu_device();
-        let render_queue = world.resource::<RenderQueue>();
         let viewport = world.resource::<IcedViewport>();
 
         if !world.get_resource::<DidDrawBasic>().is_some_and(|x| x.0) {
             return Ok(());
         }
+
         if let Some(view) = &extracted_window.swap_chain_texture_view {
-            renderer.present(
-                engine,
-                render_device,
-                render_queue,
-                render_context.command_encoder(),
-                None,
-                TEXTURE_FMT,
-                view,
-                viewport,
-                &debug.overlay(),
-            );
+            let encoder = renderer.draw(None, view, viewport);
+            render_context.add_command_buffer(encoder.finish());
         }
-        engine.finish();
+        renderer.staging_belt_finish();
 
         Ok(())
     }
