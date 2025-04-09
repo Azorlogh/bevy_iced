@@ -26,12 +26,12 @@ bevy_tasks = "0.16.0-rc.3"
 bevy_window = "0.16.0-rc.3"
 bevy_winit = "0.16.0-rc.3"
 
-iced_core = { git = "https://github.com/Azorlogh/iced.git", rev = "45b433dae4120167a888a9d76921a59c6eac87d8" }
-iced_graphics = { git = "https://github.com/Azorlogh/iced.git", rev = "45b433dae4120167a888a9d76921a59c6eac87d8" }
-iced_renderer = { git = "https://github.com/Azorlogh/iced.git", features = ["wgpu"], rev = "45b433dae4120167a888a9d76921a59c6eac87d8" }
-iced_runtime = { git = "https://github.com/Azorlogh/iced.git", rev = "45b433dae4120167a888a9d76921a59c6eac87d8" }
-iced_wgpu = { git = "https://github.com/Azorlogh/iced.git", rev = "45b433dae4120167a888a9d76921a59c6eac87d8" }
-iced_widget = { git = "https://github.com/Azorlogh/iced.git", rev = "45b433dae4120167a888a9d76921a59c6eac87d8" }
+iced_core = { git = "https://github.com/Argeo-Robotics/iced.git", rev = "943d6b1a93eb73ca69365e5009bb91b281785992" }
+iced_graphics = { git = "https://github.com/Argeo-Robotics/iced.git", rev = "943d6b1a93eb73ca69365e5009bb91b281785992" }
+iced_renderer = { git = "https://github.com/Argeo-Robotics/iced.git", features = ["wgpu"], rev = "943d6b1a93eb73ca69365e5009bb91b281785992" }
+iced_runtime = { git = "https://github.com/Argeo-Robotics/iced.git", rev = "943d6b1a93eb73ca69365e5009bb91b281785992" }
+iced_wgpu = { git = "https://github.com/Argeo-Robotics/iced.git", rev = "943d6b1a93eb73ca69365e5009bb91b281785992" }
+iced_widget = { git = "https://github.com/Argeo-Robotics/iced.git", rev = "943d6b1a93eb73ca69365e5009bb91b281785992" }
 
 cfg-if = "1.0.0"
 
