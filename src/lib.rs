@@ -174,12 +174,12 @@ impl IcedProps {
             .get_resource::<RenderDevice>()
             .unwrap()
             .wgpu_device();
-        let queue = render_world.get_resource::<RenderQueue>().unwrap();
+        let queue: &iced_wgpu::wgpu::Queue = render_world.get_resource::<RenderQueue>().unwrap();
         let adapter = render_world.get_resource::<RenderAdapter>().unwrap();
         let engine = iced_wgpu::Engine::new(
             adapter,
-            (*device).clone(),
-            (****queue).clone(),
+            device.clone(),
+            queue.clone(),
             render::TEXTURE_FMT,
             Some(iced_wgpu::graphics::Antialiasing::MSAAx4),
         );
