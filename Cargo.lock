@@ -2047,7 +2047,7 @@ checksum = "dfa686283ad6dd069f105e5ab091b04c62850d3e4cf5d67debad1933f55023df"
 [[package]]
 name = "iced_core"
 version = "0.14.0-dev"
-source = "git+https://github.com/Azorlogh/iced?rev=47af5890d8cf80b8bfd5909eee1ef3b1d5c05421#47af5890d8cf80b8bfd5909eee1ef3b1d5c05421"
+source = "git+https://github.com/Azorlogh/iced?rev=2bde14485c98c6c9207c461f8ba716f3d16d8ccf#2bde14485c98c6c9207c461f8ba716f3d16d8ccf"
 dependencies = [
  "bitflags 2.9.0",
  "bytes",
@@ -2065,7 +2065,7 @@ dependencies = [
 [[package]]
 name = "iced_futures"
 version = "0.14.0-dev"
-source = "git+https://github.com/Azorlogh/iced?rev=47af5890d8cf80b8bfd5909eee1ef3b1d5c05421#47af5890d8cf80b8bfd5909eee1ef3b1d5c05421"
+source = "git+https://github.com/Azorlogh/iced?rev=2bde14485c98c6c9207c461f8ba716f3d16d8ccf#2bde14485c98c6c9207c461f8ba716f3d16d8ccf"
 dependencies = [
  "futures",
  "iced_core",
@@ -2078,7 +2078,7 @@ dependencies = [
 [[package]]
 name = "iced_graphics"
 version = "0.14.0-dev"
-source = "git+https://github.com/Azorlogh/iced?rev=47af5890d8cf80b8bfd5909eee1ef3b1d5c05421#47af5890d8cf80b8bfd5909eee1ef3b1d5c05421"
+source = "git+https://github.com/Azorlogh/iced?rev=2bde14485c98c6c9207c461f8ba716f3d16d8ccf#2bde14485c98c6c9207c461f8ba716f3d16d8ccf"
 dependencies = [
  "bitflags 2.9.0",
  "bytemuck",
@@ -2097,7 +2097,7 @@ dependencies = [
 [[package]]
 name = "iced_renderer"
 version = "0.14.0-dev"
-source = "git+https://github.com/Azorlogh/iced?rev=47af5890d8cf80b8bfd5909eee1ef3b1d5c05421#47af5890d8cf80b8bfd5909eee1ef3b1d5c05421"
+source = "git+https://github.com/Azorlogh/iced?rev=2bde14485c98c6c9207c461f8ba716f3d16d8ccf#2bde14485c98c6c9207c461f8ba716f3d16d8ccf"
 dependencies = [
  "iced_graphics",
  "iced_wgpu",
@@ -2108,7 +2108,7 @@ dependencies = [
 [[package]]
 name = "iced_runtime"
 version = "0.14.0-dev"
-source = "git+https://github.com/Azorlogh/iced?rev=47af5890d8cf80b8bfd5909eee1ef3b1d5c05421#47af5890d8cf80b8bfd5909eee1ef3b1d5c05421"
+source = "git+https://github.com/Azorlogh/iced?rev=2bde14485c98c6c9207c461f8ba716f3d16d8ccf#2bde14485c98c6c9207c461f8ba716f3d16d8ccf"
 dependencies = [
  "bytes",
  "iced_core",
@@ -2120,7 +2120,7 @@ dependencies = [
 [[package]]
 name = "iced_wgpu"
 version = "0.14.0-dev"
-source = "git+https://github.com/Azorlogh/iced?rev=47af5890d8cf80b8bfd5909eee1ef3b1d5c05421#47af5890d8cf80b8bfd5909eee1ef3b1d5c05421"
+source = "git+https://github.com/Azorlogh/iced?rev=2bde14485c98c6c9207c461f8ba716f3d16d8ccf#2bde14485c98c6c9207c461f8ba716f3d16d8ccf"
 dependencies = [
  "bitflags 2.9.0",
  "bytemuck",
@@ -2139,7 +2139,7 @@ dependencies = [
 [[package]]
 name = "iced_widget"
 version = "0.14.0-dev"
-source = "git+https://github.com/Azorlogh/iced?rev=47af5890d8cf80b8bfd5909eee1ef3b1d5c05421#47af5890d8cf80b8bfd5909eee1ef3b1d5c05421"
+source = "git+https://github.com/Azorlogh/iced?rev=2bde14485c98c6c9207c461f8ba716f3d16d8ccf#2bde14485c98c6c9207c461f8ba716f3d16d8ccf"
 dependencies = [
  "iced_renderer",
  "iced_runtime",

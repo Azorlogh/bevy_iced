@@ -323,6 +323,10 @@ impl<M: bevy_ecs::event::Event> IcedContext<'_, '_, M> {
             }
         };
 
+        self.events.push(iced_core::Event::Window(
+            iced_core::window::Event::RedrawRequested(bevy_utils::Instant::now()),
+        ));
+
         let mut messages = Vec::<M>::new();
         let cache_entry = self.cache_map.get::<M>();
         let cache = cache_entry.take().unwrap();

@@ -26,7 +26,10 @@ use crate::{DidDraw, IcedProps, IcedResource, IcedSettings};
 #[derive(Clone, Hash, Debug, Eq, PartialEq, RenderLabel)]
 pub struct IcedPass;
 
+#[cfg(not(target_arch="wasm32"))]
 pub const TEXTURE_FMT: TextureFormat = TextureFormat::Bgra8UnormSrgb;
+#[cfg(target_arch="wasm32")]
+pub const TEXTURE_FMT: TextureFormat = TextureFormat::Rgba8UnormSrgb;
 
 #[derive(Resource, Deref, DerefMut, Clone)]
 pub struct ViewportResource(pub Viewport);
