@@ -68,19 +68,37 @@ mod utils;
 /// The default renderer.
 pub type Renderer = iced_wgpu::Renderer;
 
+/// Aaa
+pub struct IcedInterfacePlugin<Message>(PhantomData<Message>);
+impl<Message> Default for IcedInterfacePlugin<Message> {
+    fn default() -> Self {
+        Self(PhantomData)
+    }
+}
+
+impl<Message: Event> Plugin for IcedInterfacePlugin<Message> {
+    fn build(&self, app: &mut App) {
+        app.insert_non_send_resource::<Option<UserInterface<Message, Theme, Renderer>>>(None)
+            .add_systems(
+                PreUpdate,
+                systems::iced_update::<Message>.in_set(IcedUpdateSet),
+            );
+    }
+}
+
 /// The main feature of `bevy_iced`.
 /// Add this to your [`App`] by calling `app.add_plugin(bevy_iced::IcedPlugin::<Message>::default())`.
 ///
 /// `Message` is the type of of message that is produced by the UI.
 /// `WinitUserEvent` is the UserEvent type for the Winit event loop.
 /// If you are not overriding this type in the `WinitPlugin`, you don't need to set this manually.
-pub struct IcedPlugin<Message, WinitUserEvent = WakeUp> {
+pub struct IcedPlugin<WinitUserEvent = WakeUp> {
     settings: iced::Settings,
     fonts: Vec<&'static [u8]>,
-    _marker: PhantomData<(Message, WinitUserEvent)>,
+    _marker: PhantomData<WinitUserEvent>,
 }
 
-impl<Message, WinitUserEvent> Default for IcedPlugin<Message, WinitUserEvent> {
+impl<WinitUserEvent> Default for IcedPlugin<WinitUserEvent> {
     fn default() -> Self {
         Self {
             settings: Default::default(),
@@ -90,7 +108,7 @@ impl<Message, WinitUserEvent> Default for IcedPlugin<Message, WinitUserEvent> {
     }
 }
 
-impl<Message, WinitUserEvent> IcedPlugin<Message, WinitUserEvent> {
+impl<WinitUserEvent> IcedPlugin<WinitUserEvent> {
     /// Set the Iced settings.
     pub fn settings(mut self, settings: iced::Settings) -> Self {
         self.settings = settings;
@@ -104,20 +122,19 @@ impl<Message, WinitUserEvent> IcedPlugin<Message, WinitUserEvent> {
     }
 }
 
-impl<M: Event, U: RedrawRequestVariant> Plugin for IcedPlugin<M, U> {
+/// Update
+#[derive(Clone, Debug, PartialEq, Eq, Hash, SystemSet)]
+pub struct IcedUpdateSet;
+
+impl<U: RedrawRequestVariant> Plugin for IcedPlugin<U> {
     fn build(&self, app: &mut App) {
         app.add_plugins(ExtractComponentPlugin::<IcedCamera>::default())
             .add_systems(
                 PreUpdate,
-                (
-                    (systems::process_input, render::update_viewport)
-                        .before(systems::iced_update::<M>),
-                    systems::iced_update::<M>,
-                ),
+                (systems::process_input, render::update_viewport).before(IcedUpdateSet),
             )
             .init_resource::<DidDraw>()
             .init_resource::<IcedSettings>()
-            .insert_non_send_resource::<Option<UserInterface<M, Theme, Renderer>>>(None)
             .init_resource::<IcedEventQueue>()
             .init_resource::<IcedCursor>()
             .init_resource::<IcedRedrawRequest>()
@@ -177,7 +194,7 @@ struct IcedProps {
 }
 
 impl IcedProps {
-    fn new<M, U>(app: &App, config: &IcedPlugin<M, U>) -> Self {
+    fn new<U>(app: &App, config: &IcedPlugin<U>) -> Self {
         let render_world = &app.sub_app(RenderApp).world();
         let device = render_world
             .get_resource::<RenderDevice>()

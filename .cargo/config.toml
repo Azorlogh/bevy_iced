@@ -1,5 +1,5 @@
-[unstable]
-build-std = ["std", "panic_abort"]
+# [unstable]
+# build-std = ["std", "panic_abort"]
 
 [target.wasm32-unknown-unknown]
 runner = "wasm-server-runner"

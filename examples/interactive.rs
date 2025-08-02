@@ -3,7 +3,7 @@ use bevy::{
     input::mouse::{MouseButtonInput, MouseWheel},
     prelude::*,
 };
-use bevy_iced::{IcedContext, IcedPlugin, IcedSettings};
+use bevy_iced::{IcedContext, IcedInterfacePlugin, IcedPlugin, IcedSettings};
 use bevy_iced::{
     IcedProgramSet,
     iced::{
@@ -42,12 +42,13 @@ pub fn main() {
             ..Default::default()
         }))
         .add_plugins((
-            IcedPlugin::<UiMessage>::default()
+            IcedPlugin::<bevy_winit::WakeUp>::default()
                 .fonts(vec![NOTOSANS_REGULAR_BYTES])
                 .settings(iced::Settings {
                     default_font: NOTOSANS_REGULAR,
                     ..Default::default()
                 }),
+            IcedInterfacePlugin::<UiMessage>::default(),
             FrameTimeDiagnosticsPlugin::default(),
             LogDiagnosticsPlugin::default(),
         ))
