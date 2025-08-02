@@ -75,7 +75,8 @@ impl<Message> Default for IcedInterfacePlugin<Message> {
 
 impl<Message: Event> Plugin for IcedInterfacePlugin<Message> {
     fn build(&self, app: &mut App) {
-        app.insert_non_send_resource::<Option<UserInterface<Message, Theme, Renderer>>>(None)
+        app.add_event::<Message>()
+            .insert_non_send_resource::<Option<UserInterface<Message, Theme, Renderer>>>(None)
             .add_systems(
                 PreUpdate,
                 systems::iced_update::<Message>.in_set(IcedUpdateSet),
