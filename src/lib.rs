@@ -28,29 +28,26 @@
 #![deny(unsafe_code)]
 #![deny(missing_docs)]
 
-use crate::render::IcedPass;
-use crate::systems::{IcedCamera, setup_iced_camera};
+use std::borrow::Cow;
+use std::marker::PhantomData;
+
 use bevy_app::prelude::*;
-use bevy_core_pipeline::core_2d::graph::{Core2d, Node2d};
 use bevy_derive::{Deref, DerefMut};
 use bevy_ecs::prelude::*;
 use bevy_ecs::system::SystemParam;
-use bevy_render::extract_component::ExtractComponentPlugin;
 use bevy_render::prelude::*;
-use bevy_render::render_graph::{RenderGraphApp, ViewNodeRunner};
+use bevy_render::render_graph::RenderGraph;
 use bevy_render::renderer::{RenderAdapter, RenderDevice, RenderQueue, render_system};
 use bevy_render::{Render, RenderApp, RenderSet};
 use bevy_winit::WakeUp;
 use cfg_if::cfg_if;
 use iced_core::Theme;
-use iced_resource::IcedResource;
 use iced_runtime::user_interface::UserInterface;
 use iced_widget::graphics::Viewport;
+
 pub use redraw_requestor::RedrawRequestVariant;
 use redraw_requestor::{IcedRedrawRequest, RedrawRequestor};
 use render::IcedViewport;
-use std::borrow::Cow;
-use std::marker::PhantomData;
 use systems::{IcedCursor, IcedEventQueue};
 
 /// Basic re-exports for all Iced-related stuff.
@@ -128,22 +125,20 @@ pub struct IcedUpdateSet;
 
 impl<U: RedrawRequestVariant> Plugin for IcedPlugin<U> {
     fn build(&self, app: &mut App) {
-        app.add_plugins(ExtractComponentPlugin::<IcedCamera>::default())
-            .add_systems(
-                PreUpdate,
-                (systems::process_input, render::update_viewport).before(IcedUpdateSet),
-            )
-            .init_resource::<DidDraw>()
-            .init_resource::<IcedSettings>()
-            .init_resource::<IcedEventQueue>()
-            .init_resource::<IcedCursor>()
-            .init_resource::<IcedRedrawRequest>()
-            .add_systems(Startup, setup_iced_camera)
-            .configure_sets(Update, IcedProgramSet::View.after(IcedProgramSet::Update));
+        app.add_systems(
+            PreUpdate,
+            (systems::process_input, render::update_viewport).before(IcedUpdateSet),
+        )
+        .init_resource::<DidDraw>()
+        .init_resource::<IcedSettings>()
+        .init_resource::<IcedEventQueue>()
+        .init_resource::<IcedCursor>()
+        .init_resource::<IcedRedrawRequest>()
+        .configure_sets(Update, IcedProgramSet::View.after(IcedProgramSet::Update));
 
-        app.sub_app_mut(RenderApp)
-            .add_render_graph_node::<ViewNodeRunner<IcedPass>>(Core2d, IcedPass)
-            .add_render_graph_edges(Core2d, (Node2d::EndMainPass, IcedPass));
+        // app.sub_app_mut(RenderApp)
+        //     .add_render_graph_node::<ViewNodeRunner<IcedPass>>(Core2d, IcedPass)
+        //     .add_render_graph_edges(Core2d, (Node2d::EndMainPass, IcedPass));
     }
 
     fn finish(&self, app: &mut App) {
@@ -177,6 +172,7 @@ impl<U: RedrawRequestVariant> Plugin for IcedPlugin<U> {
                 render_app.world_mut().insert_resource(iced_resource);
             }
         }
+        setup_pipeline(&mut render_app.world_mut().get_resource_mut().unwrap());
     }
 }
 
@@ -273,6 +269,13 @@ mod iced_resource {
         }
     }
 }
+use iced_resource::IcedResource;
+
+fn setup_pipeline(graph: &mut RenderGraph) {
+    graph.add_node(render::IcedPass, render::IcedNode);
+
+    graph.add_node_edge(bevy_render::graph::CameraDriverLabel, render::IcedPass);
+}
 
 /// Settings used to independently customize Iced rendering.
 #[derive(Clone, Resource)]
@@ -284,8 +287,6 @@ pub struct IcedSettings {
     pub theme: Theme,
     /// The style to use for rendering Iced elements.
     pub style: iced::Style,
-    /// The order of the bevy iced camera. A higher value is drawn later, than a lower value.
-    pub camera_order: isize,
 }
 
 impl IcedSettings {
@@ -303,7 +304,6 @@ impl Default for IcedSettings {
             style: iced::Style {
                 text_color: iced_core::Color::WHITE,
             },
-            camera_order: 10,
         }
     }
 }

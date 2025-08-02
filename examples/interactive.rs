@@ -64,7 +64,6 @@ pub fn main() {
             style: Style {
                 text_color: iced::Color::from_rgb(0.0, 1.0, 1.0),
             },
-            ..Default::default()
         })
         .add_systems(Startup, build_program)
         .add_systems(
