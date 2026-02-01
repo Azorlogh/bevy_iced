@@ -101,6 +101,7 @@ impl Node for IcedNode {
 
         if let Some(view) = &extracted_window.swap_chain_texture_view {
             let encoder = renderer.draw(None, view, viewport);
+            // renderer.present(None, TextureFormat::Bc1RgbaUnorm, view, viewport);
             render_context.add_command_buffer(encoder.finish());
         }
         renderer.staging_belt_finish();

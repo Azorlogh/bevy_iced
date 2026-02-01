@@ -5,20 +5,10 @@ use bevy_ecs::system::SystemParam;
 use bevy_tasks::Task;
 use bevy_tasks::prelude::*;
 use bevy_winit::EventLoopProxyWrapper;
-use bevy_winit::WakeUp;
+use bevy_winit::WinitUserEvent;
 use cfg_if::cfg_if;
 use iced_core::window::RedrawRequest;
 use iced_runtime::user_interface::State;
-
-/// A trait for types that can be used to request a redraw.
-pub trait RedrawRequestVariant: Event + Send + Sync + 'static {
-    /// The event that should be sent to request a redraw.
-    const REDRAW_REQUEST: Self;
-}
-
-impl RedrawRequestVariant for WakeUp {
-    const REDRAW_REQUEST: Self = Self;
-}
 
 #[derive(Resource, PartialEq, Eq, PartialOrd, Ord)]
 pub struct IcedRedrawRequest(RedrawRequest);
@@ -35,6 +25,7 @@ impl From<State> for IcedRedrawRequest {
             State::Updated {
                 redraw_request,
                 input_method: _,
+                ..
             } => Self(redraw_request),
             State::Outdated => Self(RedrawRequest::Wait),
         }
@@ -52,13 +43,13 @@ impl IcedRedrawRequest {
 }
 
 #[derive(SystemParam)]
-pub struct RedrawRequestor<'w, 's, U: RedrawRequestVariant> {
+pub struct RedrawRequestor<'w, 's> {
     pub task: Local<'s, Option<Task<()>>>,
-    pub event_loop_proxy: Res<'w, EventLoopProxyWrapper<U>>,
+    pub event_loop_proxy: Res<'w, EventLoopProxyWrapper>,
     pub redraw_request: ResMut<'w, IcedRedrawRequest>,
 }
 
-impl<E: RedrawRequestVariant> RedrawRequestor<'_, '_, E> {
+impl RedrawRequestor<'_, '_> {
     pub fn finish(&mut self, state: State) {
         self.redraw_request.update(state);
 
@@ -66,7 +57,7 @@ impl<E: RedrawRequestVariant> RedrawRequestor<'_, '_, E> {
         let redraw_request = self.redraw_request.take();
         match redraw_request {
             RedrawRequest::NextFrame => {
-                let _ = self.event_loop_proxy.send_event(E::REDRAW_REQUEST);
+                let _ = self.event_loop_proxy.send_event(WinitUserEvent::WakeUp);
             }
             RedrawRequest::At(instant) => {
                 let event_loop_proxy = self.event_loop_proxy.clone();
@@ -86,7 +77,7 @@ impl<E: RedrawRequestVariant> RedrawRequestor<'_, '_, E> {
                             compile_error!("Either the `tokio` or `smol` feature must be enabled");
                         }
                     }
-                    let _ = event_loop_proxy.send_event(E::REDRAW_REQUEST);
+                    let _ = event_loop_proxy.send_event(WinitUserEvent::WakeUp);
                 };
                 #[cfg(all(not(target_arch = "wasm32"), feature = "tokio"))]
                 let f = async_compat::Compat::new(f);

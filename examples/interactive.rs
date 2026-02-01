@@ -3,7 +3,7 @@ use bevy::{
     input::mouse::{MouseButtonInput, MouseWheel},
     prelude::*,
 };
-use bevy_iced::{IcedContext, IcedInterfacePlugin, IcedPlugin, IcedSettings};
+use bevy_iced::{AppIcedExt, IcedContext, IcedPlugin, IcedSettings};
 use bevy_iced::{
     IcedProgramSet,
     iced::{
@@ -16,7 +16,7 @@ use rand::random as rng;
 const NOTOSANS_REGULAR: iced::Font = iced::Font::with_name("Noto Sans");
 const NOTOSANS_REGULAR_BYTES: &[u8] = include_bytes!("../assets/fonts/NotoSans-Regular.ttf");
 
-#[derive(Clone, Event)]
+#[derive(Clone, Message)]
 enum UiMessage {
     BoxRequested,
     Scale(f32),
@@ -42,17 +42,16 @@ pub fn main() {
             ..Default::default()
         }))
         .add_plugins((
-            IcedPlugin::<bevy_winit::WakeUp>::default()
+            IcedPlugin::default()
                 .fonts(vec![NOTOSANS_REGULAR_BYTES])
                 .settings(iced::Settings {
                     default_font: NOTOSANS_REGULAR,
                     ..Default::default()
                 }),
-            IcedInterfacePlugin::<UiMessage>::default(),
             FrameTimeDiagnosticsPlugin::default(),
             LogDiagnosticsPlugin::default(),
         ))
-        .add_event::<UiMessage>()
+        .add_iced_interface::<UiMessage, _>(ui_system)
         .insert_resource(UiActive(true))
         .insert_resource(UiData {
             scale: 50.0,
@@ -73,7 +72,6 @@ pub fn main() {
                 box_system.in_set(IcedProgramSet::Update),
                 update_scale_factor,
                 toggle_ui,
-                ui_system.in_set(IcedProgramSet::View),
             ),
         )
         .run();
@@ -92,7 +90,7 @@ fn tick(mut sprites: Query<&mut Sprite>, time: Res<Time>, data: Res<UiData>) {
 
 fn box_system(
     mut commands: Commands,
-    mut messages: EventReader<UiMessage>,
+    mut messages: MessageReader<UiMessage>,
     mut data: ResMut<UiData>,
     mut sprites: Query<&mut Sprite>,
 ) {
@@ -123,20 +121,19 @@ fn box_system(
 }
 
 fn update_scale_factor(
-    mut wheel: EventReader<MouseWheel>,
+    mut wheel: MessageReader<MouseWheel>,
     mut iced_settings: ResMut<IcedSettings>,
 ) {
     if wheel.is_empty() {
         return;
     }
-    for event in wheel.read() {
-        let scale_factor =
-            (iced_settings.scale_factor.unwrap_or(1.0) + (event.y / 10.0) as f64).max(1.0);
-        iced_settings.set_scale_factor(scale_factor);
+    for message in wheel.read() {
+        let scale_factor = (iced_settings.scale_factor.unwrap_or(1.0) + message.y / 10.0).max(1.0);
+        iced_settings.scale_factor = Some(scale_factor);
     }
 }
 
-fn toggle_ui(mut buttons: EventReader<MouseButtonInput>, mut ui_active: ResMut<UiActive>) {
+fn toggle_ui(mut buttons: MessageReader<MouseButtonInput>, mut ui_active: ResMut<UiActive>) {
     for ev in buttons.read() {
         if ev.button == MouseButton::Right {
             **ui_active = !**ui_active;

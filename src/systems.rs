@@ -1,6 +1,9 @@
+use std::marker::PhantomData;
+
 use bevy_derive::{Deref, DerefMut};
 use bevy_ecs::prelude::*;
-use bevy_ecs::system::SystemParam;
+use bevy_ecs::schedule::ScheduleConfigs;
+use bevy_ecs::system::{SystemId, SystemParam};
 use bevy_input::prelude::*;
 use bevy_input::touch::TouchInput;
 use bevy_input::{
@@ -12,29 +15,26 @@ use bevy_window::prelude::*;
 use bevy_window::{PrimaryWindow, WindowFocused};
 use iced_core::window::Event as IcedWindowEvent;
 use iced_core::{
-    Event as IcedEvent, Point, Theme, keyboard,
+    Event as IcedEvent, Point, keyboard,
     mouse::{self, Cursor},
 };
-use iced_runtime::UserInterface;
 
-use crate::redraw_requestor::IcedRedrawRequest;
-use crate::{
-    IcedProps, Renderer, conversions, iced_resource::IcedResource, render::IcedViewport, utils,
-};
+use crate::IcedRunCause;
+use crate::{conversions, render::IcedViewport, utils};
 
 #[derive(Resource, Deref, DerefMut, Default)]
 pub struct IcedEventQueue(Vec<iced_core::Event>);
 
 #[derive(SystemParam)]
 pub struct InputEvents<'w, 's> {
-    cursor_entered: EventReader<'w, 's, CursorEntered>,
-    cursor_left: EventReader<'w, 's, CursorLeft>,
-    cursor: EventReader<'w, 's, CursorMoved>,
-    mouse_button: EventReader<'w, 's, MouseButtonInput>,
-    mouse_wheel: EventReader<'w, 's, MouseWheel>,
-    keyboard_input: EventReader<'w, 's, KeyboardInput>,
-    touch_input: EventReader<'w, 's, TouchInput>,
-    window_focused: EventReader<'w, 's, WindowFocused>,
+    cursor_entered: MessageReader<'w, 's, CursorEntered>,
+    cursor_left: MessageReader<'w, 's, CursorLeft>,
+    cursor: MessageReader<'w, 's, CursorMoved>,
+    mouse_button: MessageReader<'w, 's, MouseButtonInput>,
+    mouse_wheel: MessageReader<'w, 's, MouseWheel>,
+    keyboard_input: MessageReader<'w, 's, KeyboardInput>,
+    touch_input: MessageReader<'w, 's, TouchInput>,
+    window_focused: MessageReader<'w, 's, WindowFocused>,
 }
 
 fn compute_modifiers(input_map: &ButtonInput<KeyCode>) -> keyboard::Modifiers {
@@ -115,6 +115,7 @@ pub fn process_input(
                         modifiers,
                         // NOTE: This is a winit thing we don't get from bevy events
                         location: keyboard::Location::Standard,
+                        repeat: ev.repeat,
                     }
                 } else {
                     KeyReleased {
@@ -146,22 +147,29 @@ pub fn process_input(
 }
 
 #[derive(Resource, Deref, DerefMut, Default)]
-pub struct IcedCursor(Cursor);
+pub struct IcedCursor(pub Cursor);
 
-pub fn iced_update<M: bevy_ecs::event::Event>(
+/// User interface cache
+pub struct IcedInterface<Msg> {
+    pub(crate) cache: iced_runtime::user_interface::Cache,
+    _pd: PhantomData<fn() -> Msg>,
+}
+
+impl<Msg> Default for IcedInterface<Msg> {
+    fn default() -> Self {
+        Self {
+            cache: Default::default(),
+            _pd: PhantomData,
+        }
+    }
+}
+
+pub fn iced_update<M: bevy_ecs::message::Message>(
     (viewport, windows): (Res<IcedViewport>, Query<&mut Window, With<PrimaryWindow>>),
-    #[cfg(target_arch = "wasm32")] props: NonSend<IcedResource>,
-    #[cfg(not(target_arch = "wasm32"))] props: Res<IcedResource>,
-    (mut events, touches): (ResMut<IcedEventQueue>, Res<Touches>),
-    mut ui: NonSendMut<Option<UserInterface<'static, M, Theme, Renderer>>>,
-    mut message_writer: EventWriter<M>,
+    (events, touches): (Res<IcedEventQueue>, Res<Touches>),
     mut cursor: ResMut<IcedCursor>,
-    mut iced_redraw_request: ResMut<IcedRedrawRequest>,
 ) {
     let bounds = viewport.logical_size();
-    let &mut IcedProps {
-        ref mut renderer, ..
-    } = &mut *props.lock();
     *cursor = IcedCursor({
         let window = windows.single().unwrap();
         match window.cursor_position() {
@@ -173,17 +181,22 @@ pub fn iced_update<M: bevy_ecs::event::Event>(
                 .unwrap_or(Cursor::Unavailable),
         }
     });
-    let Some(ui) = ui.as_mut() else { return };
+}
 
-    let mut messages = Vec::<M>::new();
-    let (state, _event_statuses) = ui.update(
-        events.as_slice(),
-        **cursor,
-        renderer,
-        &mut iced_core::clipboard::Null,
-        &mut messages,
-    );
-    events.clear();
-    iced_redraw_request.update(state);
-    message_writer.write_batch(messages);
+pub fn iced_update_run<M: bevy_ecs::message::Message>(
+    system_id: SystemId,
+) -> ScheduleConfigs<Box<dyn System<In = (), Out = ()>>> {
+    IntoScheduleConfigs::into_configs(move |world: &mut World| {
+        world.insert_resource(IcedRunCause::<M>::Update);
+        world.run_system(system_id).unwrap();
+    })
+}
+
+pub fn iced_draw<M: bevy_ecs::message::Message>(
+    system_id: SystemId,
+) -> ScheduleConfigs<Box<dyn System<In = (), Out = ()>>> {
+    IntoScheduleConfigs::into_configs(move |world: &mut World| {
+        world.insert_resource(IcedRunCause::<M>::Draw(PhantomData));
+        world.run_system(system_id).unwrap();
+    })
 }
